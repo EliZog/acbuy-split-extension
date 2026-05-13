@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Split Parcel",
+  "version": "0.1.0",
+  "description": "Add an in-page 'Split Parcel' tab on ACBuy to split parcel costs by people/items.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://www.acbuy.com/*",
+    "https://acbuy.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.acbuy.com/*",
+        "https://acbuy.com/*"
+      ],
+      "js": [
+        "loader.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icon16.png",
+        "icon48.png",
+        "icon128.png",
+        "main.js",
+        "scraper.js",
+        "state.js",
+        "ui-manager.js",
+        "styles.css"
+      ],
+      "matches": [
+        "https://www.acbuy.com/*",
+        "https://acbuy.com/*"
+      ]
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
