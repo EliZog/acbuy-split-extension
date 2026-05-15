@@ -3,7 +3,7 @@
   "name": "Split Parcel",
   "version": "0.1.0",
   "description": "Add an in-page 'Split Parcel' tab on ACBuy to split parcel costs by people/items.",
-  "permissions": ["storage"],
+  "permissions": [],
   "host_permissions": [
     "https://www.acbuy.com/*",
     "https://acbuy.com/*"
