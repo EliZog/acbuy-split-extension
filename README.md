@@ -1,38 +1,42 @@
 <div align="center">
   <img src="icon128.png" alt="ACbuy Split Logo" width="128" height="128" />
   <h1>ACbuy Split Order Extension</h1>
-  <p><strong>A Chrome extension to seamlessly split ACbuy haul costs among friends!</strong></p>
+  <p><strong>A premium Chrome extension to seamlessly split ACbuy haul costs with precision and style.</strong></p>
 </div>
 
-## Overview
-This extension injects a powerful "Split Parcel" button directly into the ACbuy "My Package" dashboard. When you're ordering a giant haul for multiple people, calculating individual shipping costs and item prices can be an absolute nightmare. 
+## 🚀 Overview
+**ACbuy Split** transforms the complex task of splitting large shipping hauls into a smooth, visual experience. When ordering for multiple people, calculating individual shipping shares and item totals is traditionally a spreadsheet nightmare. 
 
-**ACbuy Split** completely automates this process by cross-referencing your parcel contents with your original order history, pulling in the precise names and prices for every single item, and providing a beautiful drag-and-drop interface to distribute items to multiple people!
+This extension automates that entire workflow by cross-referencing parcel contents with your original order history, pulling in precise names, photos, and prices, and providing a high-end drag-and-drop interface to distribute costs fairly.
 
-## Features
-- **Auto-Sync:** Instantly maps parcel items to their original order names and prices.
-- **Drag & Drop:** Easily drag products from the main haul pool into individual person buckets.
-- **Fair Shipping Calculator:** Automatically grabs the "Actual Payment" shipping cost and divides it equally among everyone in the haul.
-- **Live Currency Conversion:** Switch seamlessly between USD, EUR, GBP, AUD, and more with live exchange rates.
-- **Customizable:** Rename people buckets, unassign items, handle multiples of the same item flawlessly.
-- **Export to CSV:** Export the finalized split directly into a spreadsheet!
+## ✨ Features
+- **Dynamic View Modes:** Toggle between **Grid**, **List**, and **Compact** modes for assigned items. Perfect for scanning large hauls or focusing on dense data.
+- **Auto-Enrichment:** Automatically maps cryptic parcel item names to their original, readable product names and photos from your order history.
+- **Smart Loading:** Features a synchronized background scraper and cinematic loading overlays that wait for data enrichment before revealing the UI.
+- **GPU-Accelerated Visuals:** Premium breathing animations and smooth transitions optimized for zero stutter and high performance.
+- **Fair Shipping Logic:** Automatically captures the "Actual Payment" shipping cost for selected parcels and divides it equally among everyone.
+- **Live FX Engine:** Seamlessly converts between USD, CNY, EUR, GBP, and more with real-time exchange rates.
+- **Drag & Drop Workflow:** Intuitive visual assignment of items to customizable "Person" buckets.
 
-## Installation
-1. Go to `chrome://extensions/`
-2. Enable **Developer mode** in the top right corner.
-3. Click **Load unpacked** and select the folder containing this extension.
+## 🛠 Installation
+1.  Download or clone this repository.
+2.  Open Chrome and navigate to `chrome://extensions/`.
+3.  Enable **Developer mode** (top right).
+4.  Click **Load unpacked** and select the extension directory.
 
-## Usage
-1. Navigate to the [ACbuy My Package](https://www.acbuy.com/member/my-package) page.
-2. Ensure you have parcels that are ready or shipped.
-3. Click the newly injected **Split Parcel** button in the sidebar or top navigation.
-4. Drag and drop items to split the haul!
+## 📖 Usage
+1.  Navigate to your [ACbuy My Package](https://www.acbuy.com/member/my-package) page.
+2.  Locate the glowing **Split Parcel** button in the sidebar (in the gap section).
+3.  Select the parcels you wish to split from the top chip-selection area.
+4.  Hit **Confirm Split** and wait for the smooth transition.
+5.  Set the number of people and drag items to assign them. Use the **View Toggles** to adjust density!
 
-## Architecture
-- `main.js`: Bootstraps the application and manages background task synchronization.
-- `scraper.js`: Handles scraping parcel IDs, detail frames, and order histories without interacting with the main UI thread.
-- `ui-manager.js`: Houses the logic for injecting the CSS, the split button, and managing the entire drag-and-drop modal state.
-- `state.js`: Global state management.
+## 🏗 Architecture
+- **`main.js`**: Core bootstrapper and background task coordinator.
+- **`ui-manager.js`**: Premium UI logic, CSS injection, and state-driven rendering.
+- **`scraper.js`**: Headless data extraction for parcels and order histories.
+- **`state.js`**: Centralized state management with full Undo/Redo support.
+- **`product-sheet.js`**: Specialized logic for handling detailed product views.
 
 ---
 *Disclaimer: This extension is a third-party tool and is not officially affiliated with ACbuy.*
