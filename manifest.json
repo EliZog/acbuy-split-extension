@@ -30,6 +30,8 @@
         "scraper.js",
         "state.js",
         "ui-manager.js",
+        "product-sheet.js",
+        "assets.js",
         "styles.css"
       ],
       "matches": [

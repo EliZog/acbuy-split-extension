@@ -98,6 +98,40 @@ function ensureDisabledCSS() {
       color:#aaa!important;
       background:none!important;
     }
+    
+    @keyframes sp-ready-pulse {
+      0% { transform: scale(1); opacity: 0.9; }
+      50% { transform: scale(1.03); opacity: 1; }
+      100% { transform: scale(1); opacity: 0.9; }
+    }
+    .sp-ready-indicator {
+      will-change: transform, opacity;
+      animation: sp-ready-pulse 2s infinite ease-in-out;
+      border-radius: 8px;
+      position: relative;
+      background: rgba(48, 180, 139, 0.1) !important;
+      font-weight: 700 !important;
+      color: #000 !important;
+      transition: transform 0.3s ease, background 0.3s ease;
+      box-shadow: 0 2px 8px rgba(48, 180, 139, 0.15);
+    }
+    .sp-ready-indicator:hover {
+      background: rgba(48, 180, 139, 0.15) !important;
+      color: #30b48b !important;
+    }
+    
+    /* Disable pulse and apply requested active style when selected */
+    .link.active.sp-ready-indicator, .nav-item.active.sp-ready-indicator {
+      animation: none !important;
+      background-color: #fff !important;
+      color: #30b48b !important;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+    
+    .link.active.sp-ready-indicator .iconfont, .nav-item.active.sp-ready-indicator .iconfont {
+      color: #30b48b !important;
+    }
   `;
   document.head.appendChild(st);
 }
@@ -121,11 +155,13 @@ export function setBtnDisabled(btn, dis) {
   if (dis) {
     btn.setAttribute('aria-disabled', 'true');
     btn.classList.add('sp-disabled');
+    btn.classList.remove('sp-ready-indicator');
     btn.style.pointerEvents = 'none';
     btn.style.opacity = '0.6';
   } else {
     btn.removeAttribute('aria-disabled');
     btn.classList.remove('sp-disabled');
+    btn.classList.add('sp-ready-indicator');
     btn.style.pointerEvents = '';
     btn.style.opacity = '';
   }
@@ -133,12 +169,8 @@ export function setBtnDisabled(btn, dis) {
 
 export function injectSplitBtn() {
   const cont = getLinksContainer();
-  console.log('[ACbuy Split] injectSplitBtn called. Container found:', !!cont);
   if (!cont) return;
-  if (findSplitBtn()) {
-      console.log('[ACbuy Split] Button already injected.');
-      return;
-  }
+  if (findSplitBtn()) return;
 
   const isSidebar = cont.classList.contains('links');
   console.log('[ACbuy Split] Injecting button. isSidebar:', isSidebar);
@@ -226,17 +258,22 @@ export function injectSplitBtn() {
   });
 
   if (isSidebar) {
-    const gaps = $$('.gap', cont);
-    const before = gaps[1] || gaps[0] || null;
-    const customTag = [...cont.querySelectorAll('.link')].find((el) =>
-      /custom\s*tag/i.test((el.textContent || '').trim())
-    );
-    if (before) {
-      cont.insertBefore(btn, before);
-      if (customTag && customTag.nextSibling && customTag.nextSibling !== btn) {
-        cont.insertBefore(btn, customTag.nextSibling);
-      }
-    } else cont.appendChild(btn);
+    const targetGap = Array.from(cont.querySelectorAll('.gap')).find(el => el.getAttribute('data-v-8b8dbfdc') !== null) || cont.querySelector('.gap');
+    
+    if (targetGap) {
+        // Insert button after targetGap
+        targetGap.after(btn);
+        
+        // Insert another gap after button
+        const secondGap = document.createElement('div');
+        secondGap.setAttribute(scoped, '');
+        secondGap.className = 'gap';
+        btn.after(secondGap);
+        
+        console.log('[ACbuy Split] Button injected between gaps.');
+    } else {
+        cont.appendChild(btn);
+    }
   } else {
     cont.appendChild(btn);
   }
@@ -302,12 +339,19 @@ function renderParcelPicker(root) {
   wrap.innerHTML = '';
   state.parcels.forEach((p) => {
     const id = p.id;
+    const itemsCount = p.items.length;
+    const isPending = itemsCount === 0 && (state.ui.loading || state.enrichPromise);
+    const metaText = isPending ? 'Loading...' : `${itemsCount} items`;
+    
     const pill = document.createElement('label');
-    pill.className = 'pill';
+    pill.className = 'pill'; // Removed is-loading to allow selection
     pill.setAttribute('tabindex', '0');
     pill.innerHTML = `
       <input type="checkbox" data-pick="${id}">
-      <span>${id}</span>
+      <div class="pill-content">
+        <div class="pill-id">Parcel ${id}</div>
+        <div class="pill-meta">${metaText}</div>
+      </div>
     `;
     const checked = state.ui.selectedParcelIds.has(id);
     if (checked) pill.classList.add('active');
@@ -361,18 +405,24 @@ function withLoading(root, fn) {
   `;
   box.appendChild(mask);
   state.ui.loading = true;
-  const minShowMs = 420;
+  const minShowMs = 800;
   const t0 = performance.now();
   const done = () => {
     const dt = performance.now() - t0;
     const wait = Math.max(0, minShowMs - dt);
     setTimeout(() => {
-      mask.remove();
-      state.ui.loading = false;
+      mask.classList.add('fading-out');
+      setTimeout(() => {
+        mask.remove();
+        state.ui.loading = false;
+      }, 400); // Wait for CSS transition
     }, wait);
   };
   return new Promise((resolve) => requestAnimationFrame(resolve))
-    .then(() => Promise.resolve().then(fn))
+    .then(async () => {
+        if (state.enrichPromise) await state.enrichPromise; // Wait for background data
+        return Promise.resolve().then(fn);
+    })
     .finally(done);
 }
 
@@ -390,31 +440,21 @@ function mountSplitUI() {
     <div id="sp-top-picker">
       <span class="muted">Select parcels to split:</span>
       <div class="group" id="sp-parcel-pills"></div>
-      <button id="sp-confirm" class="el-button el-button--primary"><span>Confirm</span></button>
-      <button id="sp-clear" class="el-button el-button--primary is-plain"><span>Clear</span></button>
     </div>
     <div id="sp-divider"></div>
+    <div class="sp-picker-actions-row">
+       <button id="sp-confirm" class="el-button el-button--primary"><span>Confirm Split</span></button>
+       <button id="sp-clear" class="el-button el-button--primary is-plain"><span>Clear All</span></button>
+    </div>
     <div id="sp-main-area">
       <!-- Restored old widget markup (centered), kept an id for toggling -->
       <div class="no-data" id="sp-no-data" style="height: 200px; display:none;">
         <img class="img" src="/img/no-data.a1782556.svg">
         <div>No further data available</div>
       </div>
-      <div id="sp-loading">
+          <div id="sp-loading">
         <div class="sp-card-wrap">
-          <!-- top-right icon bar -->
-          <div class="sp-top-actions">
-            <button id="sp-undo" class="el-button el-button--primary is-plain" title="Undo (Ctrl+Z)" aria-label="Undo">
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path d="M12 5V1L7 6l5 5V7a5 5 0 110 10h-1v2h1a7 7 0 000-14z" fill="currentColor"/>
-              </svg>
-            </button>
-            <button id="sp-redo" class="el-button el-button--primary is-plain" title="Redo (Ctrl+Y)" aria-label="Redo">
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path d="M12 5V1l5 5-5 5V7a5 5 0 100 10h1v2h-1a7 7 0 010-14z" fill="currentColor"/>
-              </svg>
-            </button>
-          </div>
+
           <div class="sp-toolbar">
             <div class="left">
               <label class="sp-label">Choose parcel</label>
@@ -422,6 +462,14 @@ function mountSplitUI() {
             </div>
             <div class="sp-spacer"></div>
             <div class="right">
+              <div class="sp-top-actions">
+                <button id="sp-undo" title="Undo (Ctrl+Z)" aria-label="Undo">
+                  <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 5V1L7 6l5 5V7a5 5 0 110 10h-1v2h1a7 7 0 000-14z" fill="currentColor"/></svg>
+                </button>
+                <button id="sp-redo" title="Redo (Ctrl+Y)" aria-label="Redo">
+                  <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 5V1l5 5-5 5V7a5 5 0 100 10h1v2h-1a7 7 0 010-14z" fill="currentColor"/></svg>
+                </button>
+              </div>
               <label class="sp-label">People</label>
               <input id="sp-people" type="number" min="1" max="6" value="${state.people}" class="sp-num">
               <button id="sp-reset" class="el-button el-button--primary is-plain"><span>Reset</span></button>
@@ -435,10 +483,10 @@ function mountSplitUI() {
                   <div class="sp-grand-title"><strong>Grand Total (all parcels): <span id="sp-grand" class="turq"></span></strong></div>
                   <div class="sp-grand-sub">Items <span id="sp-items" class="turq"></span> + Shipping <span id="sp-ship" class="turq"></span></div>
                 </div>
-                <div class="sp-actions-inline">
-                  <button id="sp-add-rest-parcel" class="el-button el-button--primary is-plain"><span>Add rest of parcel</span></button>
-                  <button id="sp-add-rest-haul" class="el-button el-button--primary sp-btn-haul"><span>Add rest of haul</span></button>
-                </div>
+              </div>
+              <div class="sp-bulk-actions">
+                <button id="sp-add-rest-parcel" class="el-button el-button--primary is-plain"><span>Add Rest of Parcel</span></button>
+                <button id="sp-add-rest-haul" class="el-button el-button--primary"><span>Add Rest of Haul</span></button>
               </div>
               <div class="sp-section-title" id="sp-products-title">
                 <span class="st-label">Products</span>
@@ -467,8 +515,9 @@ function mountSplitUI() {
       background:#fff;
       border:1px solid #eee;
       border-radius:12px;
-      padding:14px; /* keep your base padding */
-      padding-top:32px; /* NEW: add headroom for Undo/Redo (36px btn + ~8px top + buffer) */
+      padding:14px;
+      padding-top:12px; /* Moved up from 32px */
+      margin-top: -10px; /* Shift everything up slightly */
     }
     /* Center the restored .no-data widget */
     #${MOUNT_IDS.host} .no-data{
@@ -485,33 +534,39 @@ function mountSplitUI() {
       height:auto;
       margin-bottom:8px;
     }
-    /* Top-right button bar */
+    /* Top-right minimalist actions */
     #${MOUNT_IDS.host} .sp-top-actions{
-      position:absolute;
-      top:8px;
-      right:8px;
       display:flex;
-      gap:8px;
-      z-index:2;
+      gap:4px;
+      margin-right:12px;
+      padding-right:12px;
+      border-right:1px solid #eee;
     }
-    #${MOUNT_IDS.host} .sp-top-actions .el-button{
-      display:inline-flex;
+    #${MOUNT_IDS.host} .sp-top-actions button{
+      background:none;
+      border:none;
+      color:#999;
+      cursor:pointer;
+      padding:6px;
+      border-radius:6px;
+      display:flex;
       align-items:center;
       justify-content:center;
-      border-radius:8px;
-      padding:8px;
-      width:36px;
-      height:36px;
+      transition:all 0.2s;
+    }
+    #${MOUNT_IDS.host} .sp-top-actions button:hover{
+      color:${TURQ};
+      background:rgba(48,180,139,0.1);
     }
     #${MOUNT_IDS.host} .sp-top-actions svg{
-      width:16px;
-      height:16px;
+      width:20px;
+      height:20px;
     }
     #${MOUNT_IDS.host} .sp-toolbar{
       display:flex;
       align-items:center;
       gap:12px;
-      margin:28px 0 12px;
+      margin:12px 0 16px;
       flex-wrap:wrap;
     }
     #${MOUNT_IDS.host} .sp-toolbar .left{
@@ -523,6 +578,30 @@ function mountSplitUI() {
       display:flex;
       align-items:center;
       gap:8px;
+    }
+    #${MOUNT_IDS.host} .sp-view-toggles {
+      display: flex;
+      background: #f5f5f5;
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+      margin-right: 8px;
+    }
+    #${MOUNT_IDS.host} .sp-view-btn {
+      padding: 4px 8px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-radius: 6px;
+      color: #888;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    #${MOUNT_IDS.host} .sp-view-btn.active {
+      background: #fff;
+      color: ${TURQ};
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     #${MOUNT_IDS.host} .sp-label{
       font-size:13px;
@@ -571,6 +650,21 @@ function mountSplitUI() {
       color:#999;
       font-size:13px;
     }
+    #${MOUNT_IDS.host} .sp-total-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+      padding:12px;
+      background:#fff;
+      border-radius:10px;
+      border:1px solid #eee;
+    }
+    #${MOUNT_IDS.host} .sp-grand-label{
+      font-size:15px;
+      color:#666;
+    }
     #${MOUNT_IDS.host} .sp-grand-title{
       color:${TURQ};
       font-weight:700;
@@ -585,25 +679,58 @@ function mountSplitUI() {
       font-weight:700;
     }
     #${MOUNT_IDS.host} .sp-actions-inline{
-      display:flex;
-      gap:8px;
-      align-items:center;
+      display:none; /* Moved to .sp-bulk-actions */
     }
     #${MOUNT_IDS.host} .sp-btn-haul{
-      padding:10px 16px;
       font-weight:700;
+    }
+    .sp-bulk-actions {
+      display: flex;
+      gap: 16px;
+      margin: 12px 0 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .sp-bulk-actions .el-button {
+      flex: 1;
+      height: 48px;
+      font-size: 15px !important;
+      font-weight: 700;
+      border-radius: 10px;
+    }
+    .sp-picker-actions-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
     }
     #${MOUNT_IDS.host} .sp-two-col{
       display:flex;
-      gap:16px;
-      align-items:flex-start;
+      gap:20px;
+      align-items:stretch;
+      height:calc(100vh - 300px);
+      min-height:500px;
+      overflow:hidden;
     }
     #${MOUNT_IDS.host} .sp-left{
-      flex:0 0 54%;
-      min-width:420px;
+      flex:0 0 52%;
+      min-width:440px;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+      background:#fafafa;
+      border-radius:12px;
+      padding:16px;
+      border:1px solid #eee;
     }
     #${MOUNT_IDS.host} .sp-right{
       flex:1 1 auto;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+      background:#fff;
+      border-radius:12px;
+      padding:16px;
+      border:1px solid #eee;
     }
     #${MOUNT_IDS.host} .sp-section-title{
       font-weight:600;
@@ -617,21 +744,23 @@ function mountSplitUI() {
       display:grid;
       grid-template-columns:repeat(2,minmax(0,1fr));
       gap:12px;
-      max-height:calc(100vh - 320px);
-      overflow:auto;
-      padding-right:4px;
+      flex:1;
+      overflow-y:auto;
+      padding-right:8px;
+      margin-top:8px;
     }
     #${MOUNT_IDS.host} .sp-card{
       border:1px solid #eee;
-      border-radius:10px;
+      border-radius:8px;
       background:#fff;
-      padding:10px;
+      padding:6px 10px; /* Reverted to compact original feel */
       display:flex;
       align-items:center;
-      gap:12px;
-      min-height:100px;
+      gap:10px;
+      min-height:auto;
       user-select:none;
       transition:opacity .15s ease, filter .15s ease;
+      cursor: grab;
     }
     #${MOUNT_IDS.host} .sp-card.depleted{
       opacity:.45;
@@ -639,10 +768,10 @@ function mountSplitUI() {
       pointer-events:none;
     }
     #${MOUNT_IDS.host} .sp-thumb{
-      width:86px;
-      height:86px;
+      width:64px; /* Reverting to original manageable scale */
+      height:64px;
       object-fit:cover;
-      border-radius:8px;
+      border-radius:6px;
       border:1px solid #eee;
       flex:none;
     }
@@ -650,14 +779,16 @@ function mountSplitUI() {
       font-size:13px;
       line-height:1.3;
       display:-webkit-box;
-      -webkit-line-clamp:3;
+      -webkit-line-clamp:2;
       -webkit-box-orient:vertical;
       overflow:hidden;
       word-break:break-word;
+      color: #333;
     }
     #${MOUNT_IDS.host} .sp-price{
       margin-left:auto;
       font-weight:700;
+      font-size: 13px;
     }
     #${MOUNT_IDS.host} .sp-badge{
       margin-left:6px;
@@ -695,99 +826,227 @@ function mountSplitUI() {
     }
     #${MOUNT_IDS.host} .sp-people{
       display:grid;
-      grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
-      gap:12px;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); /* Adaptive card columns */
+      gap:16px;
+      flex:1;
+      overflow-y:auto;
+      padding-right:8px;
+      margin-top:8px;
     }
     #${MOUNT_IDS.host} .person{
-      border:2px solid transparent;
-      border-radius:10px;
+      border:1px solid #eee;
+      border-radius:12px;
       background:#fff;
-      padding:10px;
-      min-height:220px;
-      transition:border-color .15s ease;
+      padding:10px; /* Slightly reduced from 16px */
+      transition:all .15s ease;
+      display:flex;
+      flex-direction:column;
+      gap:8px; /* Reduced from 12px */
+      height: fit-content;
     }
     #${MOUNT_IDS.host} .person.selected{
       border-color:${TURQ};
+      background: rgba(48,180,139,0.02);
+      box-shadow: 0 4px 10px rgba(48,180,139,0.04);
     }
     #${MOUNT_IDS.host} .person-title .name{
       font-weight:700;
-      color:${TURQ};
+      color:#1a1a1a;
       cursor:text;
+      font-size:15px;
+    }
+    #${MOUNT_IDS.host} .person.selected .name{
+      color:${TURQ};
     }
     #${MOUNT_IDS.host} .person-title .total{
       font-weight:700;
       color:${TURQ};
     }
     #${MOUNT_IDS.host} .drop{
-      display:flex;
-      flex-direction:column;
+      display:grid; /* 2-column internal layout */
+      grid-template-columns: 1fr 1fr;
       gap:8px;
-      min-height:130px;
-      padding:6px;
-      border:2px dashed #ddd;
-      border-radius:8px;
-      transition:border-color .15s ease, background-color .15s ease;
+      min-height:100px;
+      padding:10px;
+      border:2px dashed #e5e7eb;
+      border-radius:12px;
+      transition:all .15s ease;
+      background:#fff;
     }
     #${MOUNT_IDS.host} .drop.hover{
       border-color:${TURQ};
       background:rgba(48,180,139,.06);
     }
-    #${MOUNT_IDS.host} .muted{
-      color:#888;
-      font-size:12px;
+    #${MOUNT_IDS.host} .assigned-item-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px;
+      background: white;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      position: relative;
+      transition: all 0.2s;
     }
-    @media (max-width:1100px){
-      #${MOUNT_IDS.host} .sp-top-row{ flex-wrap:wrap; }
-      #${MOUNT_IDS.host} .sp-two-col{ flex-direction:column; }
-      #${MOUNT_IDS.host} .sp-left{ min-width:0; flex:auto; }
-      #${MOUNT_IDS.host} .sp-products{ max-height:none; }
+    
+    /* View Mode: List */
+    #${MOUNT_IDS.host} .sp-people.view-list .drop {
+      display: flex;
+      flex-direction: column;
     }
-    /* top picker + divider */
-    #sp-top-picker{
-      padding-top:12px;
-      display:flex;
-      align-items:center;
-      gap:12px;
-      margin-bottom:8px;
-      flex-wrap:wrap;
+    #${MOUNT_IDS.host} .sp-people.view-list .assigned-item-row {
+      flex-direction: row;
+      align-items: center;
+      padding: 6px;
     }
-    #sp-top-picker .group{
-      display:grid;
-      grid-template-columns:repeat(5,minmax(0,1fr));
-      gap:10px;
-      width:100%;
-      align-items:stretch;
+    #${MOUNT_IDS.host} .sp-people.view-list .assigned-item-thumb {
+      width: 32px;
+      height: 32px;
     }
-    #sp-top-picker .pill{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      height:40px;
-      padding:0 14px;
-      border-radius:999px;
-      border:2px solid #e2e8f0;
-      background:#fff;
-      color:#111;
-      font-weight:600;
-      cursor:pointer;
-      user-select:none;
-      transition:border-color .15s ease, color .15s ease, box-shadow .15s ease;
+    #${MOUNT_IDS.host} .sp-people.view-list .unassign-btn-v2 {
+      width: auto;
+      padding: 4px 8px;
     }
-    #sp-top-picker .pill input{
-      display:none;
+
+    /* View Mode: Compact */
+    #${MOUNT_IDS.host} .sp-people.view-compact .drop {
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
     }
-    #sp-top-picker .pill:hover{
-      box-shadow:0 0 0 3px rgba(0,0,0,.04) inset;
+    #${MOUNT_IDS.host} .sp-people.view-compact .assigned-item-row {
+      padding: 4px;
     }
-    #sp-top-picker .pill.active{
-      border-color:#30b48b;
-      color:#30b48b;
-      box-shadow:0 0 0 3px rgba(48,180,139,.12) inset;
+    #${MOUNT_IDS.host} .sp-people.view-compact .assigned-item-thumb {
+      height: 50px;
     }
-    #sp-divider{
-      height:1px;
-      background:#e5e7eb;
-      margin:8px 0 12px;
+    #${MOUNT_IDS.host} .sp-people.view-compact .assigned-item-name {
+      display: none;
+    }
+    #${MOUNT_IDS.host} .sp-people.view-compact .unassign-btn-v2 {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      border-radius: 50%;
+      background: #ff4d4f;
+      color: white;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #${MOUNT_IDS.host} .sp-people.view-compact .unassign-btn-v2:after {
+      content: '×';
+      font-size: 14px;
+    }
+    #${MOUNT_IDS.host} .sp-people.view-compact .unassign-btn-v2 span { display: none; }
+
+    #${MOUNT_IDS.host} .assigned-item-thumb {
+      width: 100%;
+      height: 60px; /* Reduced */
+      object-fit: cover;
+      border-radius: 4px;
+    }
+    #${MOUNT_IDS.host} .assigned-item-name {
+      font-size: 11px;
+      color: #444;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.2;
+      height: 1.2em;
+    }
+    #${MOUNT_IDS.host} .unassign-btn-v2 {
+      width: 100%;
+      padding: 4px;
+      font-size: 10px;
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      color: #888;
+      transition: all 0.2s;
+    }
+    #${MOUNT_IDS.host} .unassign-btn-v2:hover {
+      background: #fff1f0;
+      color: #ff4d4f;
+      border-color: #ff4d4f;
+    }
+    
+    /* Top Picker Area */
+    #sp-top-picker {
+      padding: 24px 0 12px; /* Added more top padding */
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #sp-top-picker .group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    #sp-top-picker .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 12px 24px;
+      border-radius: 16px;
+      border: 2px solid #e2e8f0;
+      background: #fff;
+      color: #111;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s;
+      min-width: 140px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    #sp-top-picker .pill.is-loading {
+      opacity: 0.7;
+      cursor: wait;
+      pointer-events: none;
+    }
+    #sp-top-picker .pill-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      text-align: left;
+    }
+    #sp-top-picker .pill-id {
+      font-weight: 700;
+      font-size: 15px;
+      line-height: 1.2;
+    }
+    #sp-top-picker .pill-meta {
+      font-size: 12px;
+      color: #888;
+      font-weight: 500;
+    }
+    #sp-top-picker .pill:hover { 
+      border-color: #cbd5e1;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    #sp-top-picker .pill.active {
+      border-color: ${TURQ};
+      color: ${TURQ};
+      background: rgba(48, 180, 139, 0.05);
+      box-shadow: 0 4px 12px rgba(48, 180, 139, 0.1);
+    }
+    #sp-top-picker .pill.active .pill-id { color: ${TURQ}; }
+    #sp-top-picker .pill.active .pill-meta { color: ${TURQ}; opacity: 0.8; }
+    #sp-top-picker .pill input { display: none; }
+
+    #sp-divider {
+      height: 1px;
+      background: #eee;
+      margin: 16px 0; /* Tightened gap */
+    }
+
+    .sp-picker-actions-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
     }
     #sp-loading{
       position:relative;
@@ -795,11 +1054,18 @@ function mountSplitUI() {
     #sp-loading .el-loading-mask{
       position:absolute;
       inset:0;
-      background:rgba(255,255,255,.6);
+      background:rgba(255,255,255,.9); /* Slightly more opaque */
       display:flex;
       align-items:center;
       justify-content:center;
       z-index:10;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+      opacity: 1;
+      visibility: visible;
+    }
+    #sp-loading .el-loading-mask.fading-out {
+      opacity: 0;
+      visibility: hidden;
     }
     #sp-loading .el-loading-spinner .circular{
       width:54px;
@@ -1153,7 +1419,27 @@ function makeEditableNameSpan(idx) {
 }
 
 export function renderPeople(root) {
+  const toolbar = root.querySelector('.sp-toolbar .right');
+  const existing = toolbar.querySelector('.sp-view-toggles');
+  if (existing) existing.remove();
+
+  const toggles = document.createElement('div');
+  toggles.className = 'sp-view-toggles';
+  const modes = ['grid', 'list', 'compact'];
+  modes.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'sp-view-btn' + (state.ui.viewMode === m ? ' active' : '');
+    btn.textContent = m.charAt(0).toUpperCase() + m.slice(1);
+    btn.addEventListener('click', () => {
+      state.ui.viewMode = m;
+      renderPeople(root);
+    });
+    toggles.appendChild(btn);
+  });
+  toolbar.prepend(toggles);
+
   const grid = root.querySelector('#sp-people-grid');
+  grid.className = 'sp-people view-' + (state.ui.viewMode || 'grid');
   grid.innerHTML = '';
   const n = Math.max(1, Math.min(6, state.people || 2));
   ensurePeopleNames(n);
@@ -1241,13 +1527,11 @@ export function renderPeople(root) {
       const it = allItems().find((t) => t.id === itemId);
       if (!it) return;
       const row = document.createElement('div');
-      row.style.display = 'flex';
-      row.style.alignItems = 'center';
-      row.style.gap = '8px';
+      row.className = 'assigned-item-row';
       row.innerHTML = `
-        <img src="${it.thumb}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid #eee">
-        <div style="flex:1;min-width:0;font-size:13px;">${esc(it.name)}</div>
-        <button class="el-button el-button--primary is-plain" data-unassign="${it.id}" style="padding:4px 8px;"><span>Remove</span></button>
+        <img src="${it.thumb}" class="assigned-item-thumb">
+        <div class="assigned-item-name" title="${esc(it.name)}">${esc(it.name)}</div>
+        <button class="unassign-btn-v2" data-unassign="${it.id}"><span>Remove</span></button>
       `;
       row.querySelector('[data-unassign]').addEventListener('click', () => {
         pushUndo();
@@ -1378,10 +1662,12 @@ export function watchApp() {
   apply();
 
   const mo = new MutationObserver(() => {
+    // Debounce to avoid excessive cycling during rapid DOM updates
     clearTimeout(watchApp._t);
-    watchApp._t = setTimeout(apply, 120);
+    watchApp._t = setTimeout(apply, 300);
   });
-  mo.observe(document.documentElement, { childList: true, subtree: true });
+  // Observe body instead of documentElement for slightly better focus
+  mo.observe(document.body, { childList: true, subtree: true });
 
   const ps = history.pushState,
     rs = history.replaceState;
@@ -1415,4 +1701,14 @@ export function watchApp() {
 }
 
 /* ---------------- Currency watcher ---------------- */
+
+export function refreshUI() {
+  const host = document.getElementById(MOUNT_IDS.host);
+  if (!host) return;
+  renderParcelPicker(host);
+  renderProducts(host);
+  renderPeople(host);
+  updateTotalsUI(host);
+  updateProductsTitle(host);
+}
 

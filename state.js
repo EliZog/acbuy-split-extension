@@ -24,6 +24,7 @@ export const state = {
         activePerson: null,
         selectedParcelIds: new Set(),
         loading: false,
+        viewMode: 'compact',
     },
     
     enrichPromise: null,

@@ -303,7 +303,6 @@ function fileBase(u) {
     }
 }
 
-import { renderProducts, renderPeople, updateTotalsUI, updateProductsTitle } from './ui-manager.js';
 
 export async function enrichItemsFromOrders() {
     const orders = await collectOrderNamesAndPrices();
@@ -336,15 +335,6 @@ export async function enrichItemsFromOrders() {
         });
     });
 
-    if (state.ui.open) {
-        const host = document.getElementById('sp-article-host');
-        if (host) {
-            renderProducts(host);
-            renderPeople(host);
-            updateTotalsUI(host);
-            updateProductsTitle(host);
-        }
-    }
 }
 
 export async function preloadFX() {

@@ -1,6 +1,7 @@
 import { state } from './state.js';
 import { discover, fetchAllParcelDetails, enrichItemsFromOrders, preloadFX, initBaseCurrency } from './scraper.js';
-import { injectSplitBtn, watchApp, renderProducts, renderPeople, updateTotalsUI, updateProductsTitle, findSplitBtn, setBtnDisabled } from './ui-manager.js';
+import { injectSplitBtn, watchApp, renderProducts, renderPeople, updateTotalsUI, updateProductsTitle, findSplitBtn, setBtnDisabled, refreshUI } from './ui-manager.js';
+import { initProductSheet } from './product-sheet.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const getArticle = () => $('.article');
@@ -44,6 +45,7 @@ export async function init() {
             
             await state.enrichPromise;
             console.log('[ACbuy Split] 4. Finished slow fetching and enrichment');
+            if (state.ui.open) refreshUI();
         };
         
         bgTasks().catch(e => console.warn('Background tasks error:', e));
