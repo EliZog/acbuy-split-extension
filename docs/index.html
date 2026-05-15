@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - Split Parcel</title>
+    <style>
+        :root {
+            --primary: #30b48b;
+            --text: #334155;
+            --bg: #f8fafc;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background-color: var(--bg);
+            margin: 0;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 60px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        h2 {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-top: 2rem;
+            color: #1e293b;
+        }
+        h3 {
+            color: #475569;
+            margin-top: 1.5rem;
+        }
+        p, li {
+            font-size: 1.1rem;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(48, 180, 139, 0.1);
+            color: var(--primary);
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="badge">Official Policy</div>
+        <h1>Privacy Policy</h1>
+        <p><strong>Split Parcel Extension</strong></p>
+
+        <section>
+            <h2>Single Purpose</h2>
+            <p>The single purpose of <strong>Split Parcel</strong> is to provide a visual interface for users on the ACbuy website to organize, calculate, and split the costs of shipping parcels among multiple individuals based on item assignments.</p>
+        </section>
+
+        <section>
+            <h2>Permission Justification</h2>
+            <p>Split Parcel requests only the minimum necessary permissions to fulfill its single purpose.</p>
+            
+            <h3>Host Permissions</h3>
+            <ul>
+                <li><code>https://www.acbuy.com/*</code></li>
+                <li><code>https://acbuy.com/*</code></li>
+            </ul>
+            <p><strong>Justification:</strong> These permissions are required to inject the Split Parcel interface directly into the ACbuy dashboard, discover existing parcel IDs, and fetch the necessary parcel and order details required to perform the cost-splitting calculations.</p>
+
+            <h3>Remote Code</h3>
+            <p>Split Parcel does <strong>not</strong> use any remote code. All logic, including scraping and UI management, is contained within the extension package.</p>
+        </section>
+
+        <section>
+            <h2>Data Usage</h2>
+            <p>By publishing this item, the developer certifies that these disclosures reflect the most up-to-date content of the privacy policy.</p>
+
+            <h3>User Data Collection</h3>
+            <p>The extension collects the following types of data purely for local processing within the user's browser session:</p>
+            <ul>
+                <li><strong>Website Content:</strong> The extension scrapes item names, thumbnails, prices, and parcel IDs from the ACbuy website (specifically from the user's own "My Package" and "Order History" pages) to populate the splitting interface.</li>
+            </ul>
+
+            <p><strong>The extension does NOT collect or store:</strong></p>
+            <ul>
+                <li>Personally identifiable information (name, address, email, etc.)</li>
+                <li>Health information</li>
+                <li>Financial and payment information (credit card numbers, bank details, etc.)</li>
+                <li>Authentication information (passwords, credentials)</li>
+                <li>Personal communications</li>
+                <li>Location data</li>
+                <li>Web history (beyond the ACbuy domain required for operation)</li>
+                <li>User activity tracking (keystroke logging, network monitoring, etc.)</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Certifications</h2>
+            <p>I certify that the following disclosures are true:</p>
+            <ol>
+                <li>I do not sell or transfer user data to third parties, outside of the approved use cases.</li>
+                <li>I do not use or transfer user data for purposes that are unrelated to my item's single purpose.</li>
+                <li>I do not use or transfer user data to determine creditworthiness or for lending purposes.</li>
+            </ol>
+        </section>
+
+        <div class="footer">
+            Last Updated: May 15, 2026<br>
+            Split Parcel - Third-party tool for ACbuy
+        </div>
+    </div>
+</body>
+</html>
